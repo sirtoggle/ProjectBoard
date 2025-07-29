@@ -1,3 +1,5 @@
+This is a very basic project board I made for work.
+
 #Install instructions
 
 Works for both Windows and Linux
