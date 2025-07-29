@@ -20,7 +20,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-# Windows terminal/Powershell
+# Windows terminal/powershell
 
 from the root directory of the project.
 ```
