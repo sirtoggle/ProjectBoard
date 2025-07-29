@@ -1,11 +1,14 @@
+This is a very basic project board I made for work.
+
 #Install instructions
 
-Works for both Windows and Linux
+Works for both Windows and Linux\
+database is created the first time you run app.py
 
 Download the source code\
 Make sure you have Python installed and in your PATH.
 
-Edit options.csv to fit your needs.
+Edit options.csv to fit your needs. (changing the first row will break everything.)
 
 # Linux terminal
 
@@ -17,7 +20,7 @@ pip install -r requirements.txt
 python app.py
 ```
 
-# Windows terminal/Powershell
+# Windows terminal/powershell
 
 from the root directory of the project.
 ```
