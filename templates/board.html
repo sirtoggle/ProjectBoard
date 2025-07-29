@@ -1,0 +1,92 @@
+<!doctype html>
+<html>
+<head>
+    <title>Project Board</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+            font-family: Arial, sans-serif;
+        }
+
+        header, footer {
+            height: 60px;
+            background-color: #f0f0f0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        .table-wrapper {
+            height: calc(100vh - 150px);
+            width: 100%;
+        }
+
+        table {
+            width: 100%;
+            max-height: 60px;
+            border-collapse: collapse;
+            table-layout: fixed;
+        }
+
+        th, td {
+            border: 1px solid #ccc;
+            padding: 4px;
+            text-align: left;
+            word-break: break-word;
+            font-size: clamp(10px, calc((100vh - 150px) / ({{ row_count + shrink_factor }} * 2.5)), 18px);
+            height: clamp(24px, calc((100vh - 124px) / ({{ row_count + shrink_factor }})), 60px);
+        }
+
+        th a {
+            text-decoration: none;
+            color: #000;
+        }
+
+        .actions a {
+            margin-right: 6px;
+        }
+    </style>
+</head>
+<body>
+    <header>Project Board</header>
+    
+    <div class="table-wrapper">
+        <table>
+            <tr>
+                <th><a herf="{{ url_for('index', sort='requester', order='asc' if current_order == 'desc' else 'desc') }}">Requester</a></th>
+                <th><a herf="{{ url_for('index', sort='project_name', order='asc' if current_order == 'desc' else 'desc') }}">Project Name</a></th>
+                <th><a herf="{{ url_for('index', sort='status', order='asc' if current_order == 'desc' else 'desc') }}">Status</a></th>
+                <th><a herf="{{ url_for('index', sort='dept', order='asc' if current_order == 'desc' else 'desc') }}">Sub Dept</a></th>
+                <th><a herf="{{ url_for('index', sort='priority', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Priority
+                    {% if current_sort == 'priority' %}
+                        {% if current_order == 'asc' %} &#9650; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th>Actions</th>
+        </tr>
+        {% for p in projects %}
+        <tr>
+            <td>{{ p.requester }}</td>
+            <td>{{ p.project_name }}</td>
+            <td>{{ p.status }}</td>
+            <td>{{ p.dept }}</td>
+            <td>{{ p.priority }}</td>
+            <td class="actions">
+                <a href="{{ url_for('edit', id=p.id) }}">Edit</a> | 
+                <a href="{{ url_for('delete', id=p.id) }}">Delete</a>
+            </td>
+        </tr>
+        {% endfor %}
+    </table>
+    </div>
+    
+    <footer>
+    <a href="{{ url_for('edit') }}">Add new project</a>
+    </footer>
+</body>
+</html>
