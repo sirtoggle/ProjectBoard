@@ -49,11 +49,36 @@
         .actions a {
             margin-right: 6px;
         }
+
+        .actions form {
+            display: inline;
+        }
+
+        .actions button {
+            background: none;
+            border: none;
+            color: blue;
+            cursor: pointer;
+            text-decoration: underline;
+            padding: 0 4px;
+            font-size: inherit;
+        }
     </style>
 </head>
 <body>
     <header>Project Board</header>
-    
+    <div style="text-align: center; margin: 10px;">
+        {% if show_filter != 'active' %}
+            <a href="{{ url_for('index', show='active') }}">Show Active Projects</a>
+        {% endif %}
+        {% if show_filter != 'completed' %}
+            <a href="{{ url_for('index', show='completed') }}">Show Completed Projects</a>
+        {% endif %}
+        {% if show_filter != 'all' %}
+            <a href="{{ url_for('index', show='all') }}">Show All Projects</a>
+        {% endif %}
+    </div>
+
     <div class="table-wrapper">
         <table>
             <tr>
@@ -79,6 +104,14 @@
             <td class="actions">
                 <a href="{{ url_for('edit', id=p.id) }}">Edit</a> | 
                 <a href="{{ url_for('delete', id=p.id) }}">Delete</a>
+
+                <form action="{{ url_for('toggle_complete', id=p.id, show=show_filter) }}" method="post" style="display:inline;">
+                    {% if not p.complete %}
+                        <button type="submit">Mark Complete</button>
+                    {% else %}
+                        <button type="submit">Mark Incomplete</button>
+                    {% endif %}
+                </form>
             </td>
         </tr>
         {% endfor %}

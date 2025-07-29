@@ -1,11 +1,47 @@
 from flask import Flask, render_template, request, redirect, url_for
 from models import db, Project
 import csv
+import sqlite3
+import os
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///projects.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
+def ensure_columns_exist(db_path='instance/projects.db'):
+    REQUIRED_COLUMNS = {
+        'id': "INTEGER PRIMARY KEY AUTOINCREMENT",
+        'requester': "STRING(50) NOT NULL DEFAULT",
+        'project_name': "STRING(50) NOT NULL DEFAULT",
+        'status': "STRING(100) NOT NULL DEFAULT",
+        'dept': "STRING(50) NOT NULL DEFAULT",
+        'priority': "INTEGER NOT NULL DEFAULT",
+        'complete': "BOOLEAN DEFAULT 0",
+    }
+
+    if not os.path.exists(db_path):
+        print("No DB found, creating...")
+        return # if database doesn't exists it will let db.create_all() make it with all the correct columns
+    
+    
+
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+
+    cursor.execute("PRAGMA table_info(project)")
+    existing_columns = [row[1] for row in cursor.fetchall()]
+
+    for column, definition in REQUIRED_COLUMNS.items():
+        if column not in existing_columns:
+            print(f"Adding missing column '{column}'...")
+            cursor.execute(f"ALTER TABLE project ADD COLUMN {column} {definition}")
+            conn.commit()
+            print(f"Column '{column}' added.")
+        else:
+            print("No columns added")
+    
+    conn.close()
 
 def load_dropdown_options(csv_path='options.csv'):
     requesters = set()
@@ -27,15 +63,23 @@ def load_dropdown_options(csv_path='options.csv'):
 def index():
     sort_field = request.args.get('sort', 'priority')
     sort_order = request.args.get('order', 'desc')
+    show_filter = request.args.get('show', 'active')
+
+    query = Project.query
+
+    # Filter options for active, completed or all
+    if show_filter == 'active':
+        query = query.filter_by(complete=False)
+    elif show_filter == 'completed':
+        query = query.filter_by(complete=True)
 
     if sort_order == 'asc':
-        projects = Project.query.order_by(Project.priority.asc()).all() # Sort priority by ascending if set
+        projects = query.order_by(getattr(Project, sort_field).asc()).all() # Sort priority by ascending if set
     else:
-        projects = Project.query.order_by(Project.priority.desc()).all() # Sor priority by descending if nothing is set
+        projects = query.order_by(getattr(Project, sort_field).desc()).all() # Sor priority by descending if nothing is set
 
-    row_count = len(projects) # Counts the amount of entires.
     shrink_factor = 10 # The factor we want to shrink the entries so they all fit on the screen.
-    return render_template('board.html', projects=projects, current_sort=sort_field, current_order=sort_order, row_count=row_count, shrink_factor=shrink_factor) # Sends vars to flask for the web page.
+    return render_template('board.html', projects=projects, current_sort=sort_field, current_order=sort_order, row_count=len(projects), shrink_factor=shrink_factor, show_filter=show_filter) # Sends vars to flask for the web page.
 
 @app.route('/edit', methods=['GET', 'POST'])
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
@@ -75,7 +119,17 @@ def delete(id):
     db.session.commit()
     return redirect(url_for('index'))
 
+@app.route('/toggle_complete/<int:id>', methods=['POST'])
+def toggle_complete(id):
+    project = Project.query.get_or_404(id)
+    project.complete = not project.complete
+    db.session.commit()
+    return redirect(url_for('index', show=request.args.get('show', 'active')))
+
 if __name__ == '__main__':
+    ensure_columns_exist()
     with app.app_context():
         db.create_all()
     app.run(debug=True)
+
+
