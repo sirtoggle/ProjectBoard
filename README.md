@@ -2,7 +2,7 @@ This is a very basic project board I made for work.
 
 #Install instructions
 
-Works for both Windows and Linux
+Works for both Windows and Linux\
 database is created the first time you run app.py
 
 Download the source code\
