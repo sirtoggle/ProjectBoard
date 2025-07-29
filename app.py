@@ -1,10 +1,27 @@
 from flask import Flask, render_template, request, redirect, url_for
 from models import db, Project
+import csv
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///projects.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
+
+def load_dropdown_options(csv_path='options.csv'):
+    requesters = set()
+    depts = set()
+    with open(csv_path, newline='') as csvfile:
+        reader = csv.DictReader(csvfile)
+        for row in reader:
+            requester_val = row.get('requester')
+            dept_val = row.get('dept')
+
+            if requester_val:
+                requesters.add(requester_val.strip())
+            if dept_val:
+                depts.add(dept_val.strip())
+    
+    return sorted(requesters), sorted(depts)
 
 @app.route('/')
 def index():
@@ -24,9 +41,10 @@ def index():
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id=None):
     project = Project.query.get(id) if id else None # Loads the specific project if editing, or reasponds None if creating a new entry.
-    
+    requesters, depts = load_dropdown_options()
+
     if request.method == 'POST':
-        requester = request.form['requester'].strip().title()
+        requester = request.form['requester'].strip().title() # striping away format differences so we can pull from the database without issue.
         dept = request.form['dept'].strip().title()
 
         if project:
@@ -48,7 +66,7 @@ def edit(id=None):
         db.session.commit()
         return redirect(url_for('index'))
 
-    return render_template('edit.html', project=project)
+    return render_template('edit.html', project=project, requesters=requesters, depts=depts)
 
 @app.route('/delete/<int:id>')
 def delete(id):

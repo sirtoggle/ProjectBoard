@@ -9,7 +9,7 @@
     <form method="post">
         <label>Requester:
             <select name="requester">
-                {% for name in ['IEB', 'GEU', 'Executive', 'Department', 'Internal'] %}
+                {% for name in requesters %}
                     <option value="{{ name }}" {% if project and project.requester == name %}selected{% endif %}>{{ name }}</option>
                 {% endfor %}
             </select>
@@ -25,7 +25,7 @@
 
         <label>Dept:
             <select name="dept">
-                {% for g in ['Both', 'Surv Team', 'EAC Team'] %}
+                {% for g in depts %}
                     <option value="{{ g }}" {% if project and project.dept == g %}selected{% endif %}>{{ g }}</option>
                 {% endfor %}
             </select>
