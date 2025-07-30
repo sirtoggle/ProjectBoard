@@ -69,51 +69,51 @@
     <header>Project Board</header>
     <div style="text-align: center; margin: 10px;">
         {% if show_filter != 'active' %}
-            <a href="{{ url_for('index', show='active') }}">Show Active Projects</a>
+            <a href="{{ url_for('index', show='active', sort=current_sort, order=current_order) }}">Show Active Projects</a>
         {% endif %}
         {% if show_filter != 'completed' %}
-            <a href="{{ url_for('index', show='completed') }}">Show Completed Projects</a>
+            <a href="{{ url_for('index', show='completed', sort=current_sort, order=current_order) }}">Show Completed Projects</a>
         {% endif %}
         {% if show_filter != 'all' %}
-            <a href="{{ url_for('index', show='all') }}">Show All Projects</a>
+            <a href="{{ url_for('index', show='all', sort=current_sort, order=current_order) }}">Show All Projects</a>
         {% endif %}
     </div>
 
     <div class="table-wrapper">
         <table>
             <tr>
-                <th><a href="{{ url_for('index', sort='requester', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='requester', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Requester
                     {% if current_sort == 'requester' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
-                <th><a href="{{ url_for('index', sort='project_name', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='project_name', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Project Name
                     {% if current_sort == 'project_name' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
-                <th><a href="{{ url_for('index', sort='status', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='status', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Status
                     {% if current_sort == 'status' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
-                <th><a href="{{ url_for('index', sort='dept', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='dept', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Sub Dept
                     {% if current_sort == 'dept' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
-                <th><a href="{{ url_for('index', sort='priority', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='priority', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Priority
                     {% if current_sort == 'priority' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
                 <th>
-                    <a href="{{ url_for('index', sort='due_date', order='asc' if current_order == 'desc' else 'desc') }}">
+                    <a href="{{ url_for('index', sort='due_date', order='asc' if current_order == 'desc' else 'desc', show=show_filter) }}">
                     Due Date
                     {% if current_sort == 'due_date' %}
                         {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
