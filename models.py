@@ -1,5 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import Boolean, Column
+from datetime import date
 
 db = SQLAlchemy()
 
@@ -11,3 +12,4 @@ class Project(db.Model):
     dept = db.Column(db.String(50), nullable=False)
     priority = db.Column(db.Integer, nullable=False)
     complete = db.Column(db.Boolean, default=False)
+    due_date = db.Column(db.String(10), default='')

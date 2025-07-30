@@ -18,6 +18,7 @@ def ensure_columns_exist(db_path='instance/projects.db'):
         'dept': "STRING(50) NOT NULL DEFAULT",
         'priority': "INTEGER NOT NULL DEFAULT",
         'complete': "BOOLEAN DEFAULT 0",
+        'due_date': "TEXT DEFAULT ''"
     }
 
     if not os.path.exists(db_path):
@@ -89,21 +90,27 @@ def edit(id=None):
 
     if request.method == 'POST':
         requester = request.form['requester'].strip().title() # striping away format differences so we can pull from the database without issue.
+        project_name=request.form['project_name'].strip()
+        status=request.form['status'].strip()
         dept = request.form['dept'].strip().title()
+        priority=int(request.form['priority'])
+        due_date = request.form.get('due_date', '').strip()
 
         if project:
             project.requester = requester
-            project.project_name = request.form['project_name'].strip()
-            project.status = request.form['status'].strip()
+            project.project_name = project_name
+            project.status = status
             project.dept = dept
-            project.priority = int(request.form['priority'])
+            project.priority = priority
+            project.due_date = due_date
         else:
             new_project = Project(
                 requester=requester,
-                project_name=request.form['project_name'].strip(),
-                status=request.form['status'].strip(),
+                project_name=project_name,
+                status=status,
                 dept=dept,
-                priority=int(request.form['priority'])
+                priority=priority,
+                due_date=due_date
             )
             db.session.add(new_project)
 

@@ -39,6 +39,10 @@
             </select>
         </label><br><br>
 
+        <label>Due Date:
+            <input type="date" name="due_date" value="{{ project.due_date if project else '' }}">
+        </label><br><br>
+
         <button type="submit">Save</button>
     </form>
 </body>

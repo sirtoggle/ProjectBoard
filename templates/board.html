@@ -82,14 +82,41 @@
     <div class="table-wrapper">
         <table>
             <tr>
-                <th><a herf="{{ url_for('index', sort='requester', order='asc' if current_order == 'desc' else 'desc') }}">Requester</a></th>
-                <th><a herf="{{ url_for('index', sort='project_name', order='asc' if current_order == 'desc' else 'desc') }}">Project Name</a></th>
-                <th><a herf="{{ url_for('index', sort='status', order='asc' if current_order == 'desc' else 'desc') }}">Status</a></th>
-                <th><a herf="{{ url_for('index', sort='dept', order='asc' if current_order == 'desc' else 'desc') }}">Sub Dept</a></th>
-                <th><a herf="{{ url_for('index', sort='priority', order='asc' if current_order == 'desc' else 'desc') }}">
+                <th><a href="{{ url_for('index', sort='requester', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Requester
+                    {% if current_sort == 'requester' %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th><a href="{{ url_for('index', sort='project_name', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Project Name
+                    {% if current_sort == 'project_name' %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th><a href="{{ url_for('index', sort='status', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Status
+                    {% if current_sort == 'status' %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th><a href="{{ url_for('index', sort='dept', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Sub Dept
+                    {% if current_sort == 'dept' %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th><a href="{{ url_for('index', sort='priority', order='asc' if current_order == 'desc' else 'desc') }}">
                     Priority
                     {% if current_sort == 'priority' %}
-                        {% if current_order == 'asc' %} &#9650; {% endif %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
+                    {% endif %}
+                </a></th>
+                <th>
+                    <a href="{{ url_for('index', sort='due_date', order='asc' if current_order == 'desc' else 'desc') }}">
+                    Due Date
+                    {% if current_sort == 'due_date' %}
+                        {% if current_order == 'asc' %} &#9650; {% else %} &#9660; {% endif %}
                     {% endif %}
                 </a></th>
                 <th>Actions</th>
@@ -101,9 +128,14 @@
             <td>{{ p.status }}</td>
             <td>{{ p.dept }}</td>
             <td>{{ p.priority }}</td>
+            <td>
+                {% if p.due_date %}
+                    {{ p.due_date.split('-')[1] }}-{{ p.due_date.split('-')[2] }}-{{ p.due_date.split('-')[0] }}
+                {% endif %}
+            </td>
             <td class="actions">
                 <a href="{{ url_for('edit', id=p.id) }}">Edit</a> | 
-                <a href="{{ url_for('delete', id=p.id) }}">Delete</a>
+                <a href="{{ url_for('delete', id=p.id) }}">Delete</a> |
 
                 <form action="{{ url_for('toggle_complete', id=p.id, show=show_filter) }}" method="post" style="display:inline;">
                     {% if not p.complete %}
