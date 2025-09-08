@@ -1,48 +1,102 @@
-from flask import Flask, render_template, request, redirect, url_for
-from models import db, Project
 import csv
 import sqlite3
 import os
+from flask import Flask, render_template, request, redirect, url_for
+from models import db, Project, Attachment
+from werkzeug.utils import secure_filename
+from datetime import datetime
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///projects.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db.init_app(app)
 
+UPLOAD_FOLDER = os.path.join(os.getcwd(), 'static', 'uploads')
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif', 'pdf'}
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
+
+
+# --- DB Maintenance ---
 def ensure_columns_exist(db_path='instance/projects.db'):
-    REQUIRED_COLUMNS = {
-        'id': "INTEGER PRIMARY KEY AUTOINCREMENT",
-        'requester': "STRING(50) NOT NULL DEFAULT",
-        'project_name': "STRING(50) NOT NULL DEFAULT",
-        'status': "STRING(100) NOT NULL DEFAULT",
-        'dept': "STRING(50) NOT NULL DEFAULT",
-        'priority': "INTEGER NOT NULL DEFAULT",
-        'complete': "BOOLEAN DEFAULT 0",
-        'due_date': "TEXT DEFAULT ''"
-    }
+    db_dir = os.path.dirname(db_path)
+    if not os.path.exists(db_dir):
+        os.makedirs(db_dir, exist_ok=True)
 
-    if not os.path.exists(db_path):
-        print("No DB found, creating...")
-        return # if database doesn't exists it will let db.create_all() make it with all the correct columns
-    
-    
-
+    create_new = not os.path.exists(db_path)
     conn = sqlite3.connect(db_path)
     cursor = conn.cursor()
 
-    cursor.execute("PRAGMA table_info(project)")
-    existing_columns = [row[1] for row in cursor.fetchall()]
+    if create_new:
+        cursor.execute("""
+            CREATE TABLE project(
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                requester TEXT,
+                project_name TEXT,
+                status TEXT,
+                dept TEXT,
+                priority INTEGER,
+                due_date TEXT,
+                complete BOOLEAN DEFAULT 0
+            )
+        """)
 
-    for column, definition in REQUIRED_COLUMNS.items():
-        if column not in existing_columns:
-            print(f"Adding missing column '{column}'...")
-            cursor.execute(f"ALTER TABLE project ADD COLUMN {column} {definition}")
-            conn.commit()
-            print(f"Column '{column}' added.")
-        else:
-            print("No columns added")
-    
+        cursor.execute("""
+            CREATE TABLE attachment (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id INTEGER NOT NULL,
+                filename TEXT NOT NULL,
+                filepath TEXT NOT NULL,
+                uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY(project_id) REFERENCES project(id)
+            )
+        """)
+        print("Created new database with 'project' and 'attachment' tables.")
+
+    else:
+        # Check all required columns in project table
+        REQUIRED_COLUMNS = {
+            'id': "INTEGER PRIMARY KEY AUTOINCREMENT",
+            'requester': "TEXT",
+            'project_name': "TEXT",
+            'status': "TEXT",
+            'dept': "TEXT",
+            'priority': "INTEGER",
+            'complete': "BOOLEAN DEFAULT 0",
+            'due_date': "TEXT"
+        }
+
+        cursor.execute("PRAGMA table_info(project)")
+        existing_columns = [column[1] for column in cursor.fetchall()]
+
+        for column, definition in REQUIRED_COLUMNS.items():
+            if column not in existing_columns:
+                cursor.execute(f"ALTER TABLE project ADD COLUMN {column} {definition}")
+                print(f"Column '{column}' added.")
+
+        # Ensure attachment table exists
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name='attachment'")
+        table_exists = cursor.fetchone()
+        if not table_exists:
+            cursor.execute("""
+                CREATE TABLE attachment (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    project_id INTEGER NOT NULL,
+                    filename TEXT NOT NULL,
+                    filepath TEXT NOT NULL,
+                    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                    FOREIGN KEY(project_id) REFERENCES project(id)
+                )
+            """)
+            print("Created 'attachment' table.")
+
+    conn.commit()
     conn.close()
+
+# --- Helpers ---
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 def load_dropdown_options(csv_path='options.csv'):
     requesters = set()
@@ -57,9 +111,10 @@ def load_dropdown_options(csv_path='options.csv'):
                 requesters.add(requester_val.strip())
             if dept_val:
                 depts.add(dept_val.strip())
-    
+
     return sorted(requesters), sorted(depts)
 
+# --- Routes ---
 @app.route('/')
 def index():
     sort_field = request.args.get('sort', 'priority')
@@ -68,32 +123,61 @@ def index():
 
     query = Project.query
 
-    # Filter options for active, completed or all
     if show_filter == 'active':
         query = query.filter_by(complete=False)
     elif show_filter == 'completed':
         query = query.filter_by(complete=True)
 
     if sort_order == 'asc':
-        projects = query.order_by(getattr(Project, sort_field).asc()).all() # Sort priority by ascending if set
+        projects = query.order_by(getattr(Project, sort_field).asc()).all()
     else:
-        projects = query.order_by(getattr(Project, sort_field).desc()).all() # Sor priority by descending if nothing is set
+        projects = query.order_by(getattr(Project, sort_field).desc()).all()
 
-    shrink_factor = 10 # The factor we want to shrink the entries so they all fit on the screen.
-    return render_template('board.html', projects=projects, current_sort=sort_field, current_order=sort_order, row_count=len(projects), shrink_factor=shrink_factor, show_filter=show_filter) # Sends vars to flask for the web page.
+    shrink_factor = 10
+    return render_template('board.html', projects=projects,
+                           current_sort=sort_field,
+                           current_order=sort_order,
+                           row_count=len(projects),
+                           shrink_factor=shrink_factor,
+                           show_filter=show_filter)
+
+@app.route('/project/<int:project_id>', methods=['GET', 'POST'])
+def project_details(project_id):
+    project = Project.query.get_or_404(project_id)
+
+    if request.method == 'POST':
+        if 'file' not in request.files:
+            return redirect(request.url)
+        file = request.files['file']
+        if file and allowed_file(file.filename):
+            filename = secure_filename(file.filename)
+            filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
+            file.save(filepath)
+
+            attachment = Attachment(
+                project_id=project.id,
+                filename=filename,
+                filepath=filepath
+            )
+            db.session.add(attachment)
+            db.session.commit()
+
+            return redirect(url_for('project_details', project_id=project.id))
+
+    return render_template('project_details.html', project=project)
 
 @app.route('/edit', methods=['GET', 'POST'])
 @app.route('/edit/<int:id>', methods=['GET', 'POST'])
 def edit(id=None):
-    project = Project.query.get(id) if id else None # Loads the specific project if editing, or reasponds None if creating a new entry.
+    project = Project.query.get(id) if id else None
     requesters, depts = load_dropdown_options()
 
     if request.method == 'POST':
-        requester = request.form['requester'].strip().title() # striping away format differences so we can pull from the database without issue.
-        project_name=request.form['project_name'].strip()
-        status=request.form['status'].strip()
+        requester = request.form['requester'].strip().title()
+        project_name = request.form['project_name'].strip()
+        status = request.form['status'].strip()
         dept = request.form['dept'].strip().title()
-        priority=int(request.form['priority'])
+        priority = int(request.form['priority'])
         due_date = request.form.get('due_date', '').strip()
 
         if project:
@@ -133,10 +217,9 @@ def toggle_complete(id):
     db.session.commit()
     return redirect(url_for('index', show=request.args.get('show', 'active')))
 
+# --- App Entry ---
 if __name__ == '__main__':
     ensure_columns_exist()
     with app.app_context():
         db.create_all()
     app.run(debug=True)
-
-
