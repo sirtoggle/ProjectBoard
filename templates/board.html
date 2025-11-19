@@ -75,6 +75,9 @@
         {% if show_filter != 'all' %}
             <a href="{{ url_for('index', show='all', sort=current_sort, order=current_order) }}">Show All Projects</a>
         {% endif %}
+        <a href="{{ url_for('export_pdf', sort=current_sort, order=current_order, show=show_filter) }}"
+            style="margin-left: 20px; font-weight: bold;">
+             Export as PDF</a>
     </div>
 
     <div class="table-wrapper">

@@ -1,10 +1,13 @@
 import csv
 import sqlite3
 import os
-from flask import Flask, render_template, request, redirect, url_for
+import io
+from flask import Flask, render_template, request, redirect, url_for, send_file
 from models import db, Project, Attachment
 from werkzeug.utils import secure_filename
 from datetime import datetime
+from reportlab.lib.pagesizes import letter
+from reportlab.pdfgen import canvas
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///projects.db'
@@ -18,7 +21,7 @@ os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 
 
-# --- DB Maintenance ---
+# Database updating.
 def ensure_columns_exist(db_path='instance/projects.db'):
     db_dir = os.path.dirname(db_path)
     if not os.path.exists(db_dir):
@@ -94,7 +97,8 @@ def ensure_columns_exist(db_path='instance/projects.db'):
     conn.commit()
     conn.close()
 
-# --- Helpers ---
+# Helpers
+
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
@@ -114,7 +118,8 @@ def load_dropdown_options(csv_path='options.csv'):
 
     return sorted(requesters), sorted(depts)
 
-# --- Routes ---
+# Routes
+
 @app.route('/')
 def index():
     sort_field = request.args.get('sort', 'priority')
@@ -217,9 +222,75 @@ def toggle_complete(id):
     db.session.commit()
     return redirect(url_for('index', show=request.args.get('show', 'active')))
 
+@app.route('/export_pdf')
+def export_pdf():
+    sort_field = request.args.get('sort', 'priority')
+    sort_order = request.args.get('order', 'desc')
+    show_filter = request.args.get('show', 'active')
+
+    query = Project.query
+
+    # Filters
+
+    if show_filter == 'active':
+        query = query.filter_by(complete=False)
+    elif show_filter == 'completed':
+        query = query.filter_by(complete=True)
+    
+    # Sorting
+
+    if sort_order == 'asc':
+        projects = query.order_by(getattr(Project, sort_field).asc()).all()
+    else:
+        projects = query.order_by(getattr(Project, sort_field).desc()).all()
+    
+    # Build PTF
+
+    buffer = io.BytesIO()
+    pdf = canvas.Canvas(buffer, pagesize=letter)
+
+    pdf.setFont("Helvetica", 12)
+    y = 750
+
+    pdf.drawString(30, y, "Project List Export")
+    y -= 25
+
+    for p in projects:
+        line = f"{p.priority} | {p.requester} | {p.project_name} | {p.status} | {p.dept}"
+    
+        # Due Date
+        if p.due_date:
+            try:
+                parts = p.due_date.split("-")
+                line += f" | Due: {parts[1]}-{parts[2]}-{parts[0]}"
+            except:
+                line += f" | Due: {p.due_date}"
+        
+        #Completed Flag
+        if p.complete:
+            line += " | COMPLETE"
+        
+        pdf.drawString(30, y, line)
+        y -= 18
+
+        if y < 50:
+            pdf.showPage()
+            pdf.setFont("Helvetica", 12)
+            y = 750
+    
+    pdf.save()
+    buffer.seek(0)
+
+    return send_file(
+        buffer,
+        as_attachment=True,
+        download_name="project_export.pdf",
+        mimetype='application/pdf'
+    )
+
 # --- App Entry ---
 if __name__ == '__main__':
     ensure_columns_exist()
     with app.app_context():
         db.create_all()
-    app.run(debug=True)
+    app.run(debug=False, host='0.0.0.0')
